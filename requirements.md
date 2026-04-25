@@ -23,6 +23,13 @@
 - Track/reconcile both by trade records and by position (quantity per symbol).
 - Notify user/admin only when mismatches persist or action is needed.
 
+## Trade Recording Logic
+
+- After sending an order to the broker, the system MUST check the broker’s response.
+- Only orders confirmed as “filled” or “succeeded” by the broker are recorded in the local trade book.
+- Any order attempt that is not successful (e.g., rejected, failed, timeout) MUST be logged with the broker’s response and error, and MUST NOT update or create an entry in the local trade book.
+- This ensures the local trade book always accurately reflects only actual, broker-confirmed trades.
+
 ## Common Blockages & Routine Handling
 
 - Broker API connection fails – prompt for new credentials/retry later.
@@ -51,16 +58,18 @@ flowchart TD
     D --> E{Signal?}
     E --> |"No"| B
     E --> |"Yes"| F[Send Order to Broker]
-    F --> G[Record Signal in Local Trade Book]
-    G --> H[Monitor Open Trades]
-    H --> I{Exit Criteria Met?}
-    I --> |"No"| H
-    I --> |"Yes"| J[Algo Exit Signal or SL/TP Hit]
-    J --> K[Send Close Order to Broker]
-    K --> L{Filled?}
-    L --> |"No"| H
-    L --> |"Yes"| M[Archive Trade for Analytics]
-    M --> N[Reconciliation: Local & Broker Records]
+    F --> G{Order Succeeded?}
+    G --> |"No"| H[Log Attempt and Error]
+    G --> |"Yes"| I[Record Trade in Local Trade Book]
+    I --> J[Monitor Open Trades]
+    J --> K{Exit Criteria Met?}
+    K --> |"No"| J
+    K --> |"Yes"| L[Algo Exit Signal or SL/TP Hit]
+    L --> M[Send Close Order to Broker]
+    M --> N{Close Filled?}
+    N --> |"No"| J
+    N --> |"Yes"| O[Archive Trade for Analytics]
+    O --> P[Reconciliation: Local & Broker Records]
 ```
 
 #### Clarification on Trade Book Records
