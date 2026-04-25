@@ -3,6 +3,7 @@
 ### 0.1 Broker API Discovery & Connection
 1. User supplies broker name. System finds/validates API documentation and guides credential entry.
 2. System tests connection, fetches sample data, and stores broker connection profile if successful. Prompts for manual URL if broker is unknown.
+- API credentials must be stored in encrypted form.
 
 ### 0.2 User Configuration for Trading
 - Select tickers, strategy, and risk/position limits.
@@ -22,6 +23,8 @@
 - Allow user to annotate or adopt discovered/manual trades in the trade book.
 - Track/reconcile both by trade records and by position (quantity per symbol).
 - Notify user/admin only when mismatches persist or action is needed.
+- Write operations on trade logs and the trade book must be append-only (no silent modifications).
+- All trade and log entries must use accurate, synchronized timestamps.
 
 ## Trade Recording Logic
 
@@ -29,6 +32,8 @@
 - Only orders confirmed as “filled” or “succeeded” by the broker are recorded in the local trade book.
 - Any order attempt that is not successful (e.g., rejected, failed, timeout) MUST be logged with the broker’s response and error, and MUST NOT update or create an entry in the local trade book.
 - This ensures the local trade book always accurately reflects only actual, broker-confirmed trades.
+- Each trade/order must include a unique idempotency key to prevent accidental duplicates.
+- After submitting an order, persist its submission status until a broker “filled/succeeded” response is received and logged.
 
 ## Common Blockages & Routine Handling
 
@@ -38,6 +43,9 @@
 - Partial fills/multi-leg orders – aggregate fills; prompt for review on mismatch.
 - Temporary network/API outage – retry, alert if lasting.
 - Small data differences – allow simple price/time tolerance in matching.
+- A manual kill-switch must be available to halt trading immediately if needed.
+- If a trade attempt is far outside normal ranges (“fat finger”), system must reject it or require extra confirmation.
+- Important events (broker disconnect, failed order, risk breach) must generate an alert or visible UI warning.
 
 ## Example User Reconciliation Table
 
